@@ -1,9 +1,7 @@
-﻿using AutoMapper;
-using FormulaOne.DataService.Repository.Interfaces;
-using FormulaOne.Entities.DbSet;
+﻿using FormulaOne.Api.Commands;
+using FormulaOne.Api.Queries.Driver;
 using FormulaOne.Entities.Dtos.Requests;
-using FormulaOne.Entities.Dtos.Responses;
-using Microsoft.AspNetCore.Http;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FormulaOne.Api.Controllers;
@@ -12,29 +10,32 @@ namespace FormulaOne.Api.Controllers;
 [ApiController]
 public class DriversController : BaseController
 {
-    public DriversController(IUnitOfWork unitOfWork, IMapper mapper) : base(unitOfWork, mapper)
+    private readonly IMediator _mediator;
+
+    public DriversController(IMediator mediator) : base(mediator)   
     {
+        _mediator = mediator;
     }
 
     [HttpGet("")]
     public async Task<IActionResult> GetDrivers()
     {
-        var drivers = await _unitOfWork.Drivers.All();
-        var result = _mapper.Map<IEnumerable<DriverResponse>>(drivers);
-
+        // Speficying the query
+        var query = new GetAllDriversQuery();
+        var result = await _mediator.Send(query);
         return Ok(result);
     }
 
     [HttpGet("{driverId:guid}")]
     public async Task<IActionResult> GetDriverById(Guid driverId)
     {
-        var driver = await _unitOfWork.Drivers.GetById(driverId);
-        if (driver == null)
+        // Speficying the query
+        var query = new GetDriverQuery(driverId);
+        var result = await _mediator.Send(query);
+        if(result == null)
         {
-            return NotFound("No Driver found");
+            return NotFound(); 
         }
-        var result = _mapper.Map<DriverResponse>(driver);
-
         return Ok(result);
     }
 
@@ -44,11 +45,9 @@ public class DriversController : BaseController
         if (!ModelState.IsValid)
             return BadRequest();
 
-        var result = _mapper.Map<Driver>(driver);
-        await _unitOfWork.Drivers.Add(result);
-        await _unitOfWork.CompleteAsync();
-
-        return CreatedAtAction(nameof(GetDriverById), new { driverId = result.Id }, result);
+        var command = new CreateDriverInfoRequest(driver);   
+        var result = await _mediator.Send(command);
+        return CreatedAtAction(nameof(GetDriverById), new { driverId = result.DriverId }, result);
     }
 
     [HttpPut("")]
@@ -57,26 +56,17 @@ public class DriversController : BaseController
         if (!ModelState.IsValid)
             return BadRequest();
 
-        var result = _mapper.Map<Driver>(updateDriver);
-        await _unitOfWork.Drivers.Update(result);
-        await _unitOfWork.CompleteAsync();
+        var command = new UpdateDriverInfoRequest(updateDriver);
+        var result = await _mediator.Send(command);
+        return result ? NoContent() : BadRequest();
 
-        return NoContent();
     }
 
     [HttpDelete("{driverId:guid}")]
     public async Task<IActionResult> DeleteDriver(Guid id)
     {
-        var driver = await _unitOfWork.Drivers.GetById(id);
-        if (driver == null)
-        {
-            return NotFound("No Driver found");
-        }
-
-        await _unitOfWork.Drivers.Delete(id);
-        await _unitOfWork.CompleteAsync();
-
-        return NoContent();
-
+        var command = new DeleteDriverInfoRequest(id);
+        var result = await _mediator.Send(command);
+        return result ? NoContent() : BadRequest();
     }
 }
