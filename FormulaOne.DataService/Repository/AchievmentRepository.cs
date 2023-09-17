@@ -68,7 +68,7 @@ public class AchievmentRepository : GenericRepository<Achievement>, IAchievement
         try
         {
             // get entity
-            var result = await _dbSet.FirstOrDefaultAsync(x => x.Id == achievement.Id);
+            var result = await _dbSet.FirstOrDefaultAsync(x => x.DriverId == achievement.DriverId);
             if (result == null)
             {
                 return false;
@@ -76,7 +76,7 @@ public class AchievmentRepository : GenericRepository<Achievement>, IAchievement
             result.UpdatedDate = DateTime.UtcNow;
             result.RaceWins = achievement.RaceWins;
             result.PolePosition = achievement.PolePosition;
-            result.FatestLap = achievement.FatestLap;
+            result.FastestLap = achievement.FastestLap;
             result.WorldChampionship = achievement.WorldChampionship;
             return true;
         }
