@@ -17,6 +17,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+// Injecting MediatR 
+builder.Services.AddMediatR(config => config.RegisterServicesFromAssemblies((typeof(Program).Assembly)));
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

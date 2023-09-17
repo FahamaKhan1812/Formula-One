@@ -1,9 +1,7 @@
-﻿using AutoMapper;
-using FormulaOne.DataService.Repository.Interfaces;
-using FormulaOne.Entities.DbSet;
+﻿using FormulaOne.Api.Commands.Achievement;
+using FormulaOne.Api.Queries.Achievement;
 using FormulaOne.Entities.Dtos.Requests;
-using FormulaOne.Entities.Dtos.Responses;
-using Microsoft.AspNetCore.Http;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FormulaOne.Api.Controllers;
@@ -12,20 +10,22 @@ namespace FormulaOne.Api.Controllers;
 [ApiController]
 public class AchievementsController : BaseController
 {
-    public AchievementsController(IUnitOfWork unitOfWork, IMapper mapper) : base(unitOfWork, mapper)
+    private readonly IMediator _mediator;
+    public AchievementsController(IMediator mediator) : base(mediator)
     {
+        _mediator = mediator;
     }
 
     [HttpGet("{driverId:guid}")]
     public async Task<IActionResult> GetDriverAchievements(Guid driverId)
     {
-        var driverAchievements = await  _unitOfWork.Achievements.GetDriverAchievementAsync(driverId);
-        if(driverAchievements == null)
+        // Speficying the query
+        var query = new GetDriverAchievementQuery(driverId);
+        var result = await _mediator.Send(query);
+        if(result is null)
         {
-            return NotFound("No Achievements found");
+            return NotFound();
         }
-        var result = _mapper.Map<DriverAchievementResponse>(driverAchievements);
-
         return Ok(result);
     }
 
@@ -35,9 +35,8 @@ public class AchievementsController : BaseController
         if(!ModelState.IsValid)
             return BadRequest();
 
-        var result = _mapper.Map<Achievement>(achievement);
-        await _unitOfWork.Achievements.Add(result);
-        await _unitOfWork.CompleteAsync();
+        var command = new CreateDriverAchievementInfoRequest(achievement);
+        var result = await _mediator.Send(command);
 
         return CreatedAtAction(nameof(GetDriverAchievements), new { driverId = result.Id }, result);
     }
@@ -48,11 +47,9 @@ public class AchievementsController : BaseController
         if (!ModelState.IsValid)
             return BadRequest();
 
-        var result = _mapper.Map<Achievement>(updateDriver);
-        await _unitOfWork.Achievements.Update(result);
-        await _unitOfWork.CompleteAsync();
-
-        return NoContent();
+        var command = new UpdateDriverAchievementInfoRequest(updateDriver);
+        var result = await _mediator.Send(command);
+        return result ? NoContent() : BadRequest();
     }
 
 }
